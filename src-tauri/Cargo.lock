@@ -322,10 +322,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c673075a2e0e5f4a1dde27ce9dee1ea4558c7ffe648f576438a20ca1d2acc4b0"
 dependencies = [
  "iana-time-zone",
- "js-sys",
  "num-traits",
  "serde",
- "wasm-bindgen",
  "windows-link 0.2.1",
 ]
 
@@ -1632,21 +1630,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "jsonwebtoken"
-version = "9.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a87cc7a48537badeae96744432de36f4be2b4a34a05a5ef32e9dd8a1c169dde"
-dependencies = [
- "base64 0.22.1",
- "js-sys",
- "pem",
- "ring",
- "serde",
- "serde_json",
- "simple_asn1",
-]
-
-[[package]]
 name = "keyboard-types"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1853,29 +1836,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
-name = "num-bigint"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5e44f723f1133c9deac646763579fdb3ac745e418f2a7af9cd0c431da1f20b9"
-dependencies = [
- "num-integer",
- "num-traits",
-]
-
-[[package]]
 name = "num-conv"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "521739c6d2bac4aa25192232afe6841231376b2b26d4d9fae5ecf8ca5772e441"
-
-[[package]]
-name = "num-integer"
-version = "0.1.46"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7969661fd2958a5cb096e56c8e1ad0444ac2bbcd0061bd28660485a44879858f"
-dependencies = [
- "num-traits",
-]
 
 [[package]]
 name = "num-traits"
@@ -2031,7 +1995,6 @@ checksum = "e3e0adef53c21f888deb4fa59fc59f7eb17404926ee8a6f59f5df0fd7f9f3272"
 dependencies = [
  "bitflags 2.11.1",
  "block2",
- "libc",
  "objc2",
  "objc2-core-foundation",
 ]
@@ -2162,16 +2125,6 @@ dependencies = [
  "redox_syscall",
  "smallvec",
  "windows-link 0.2.1",
-]
-
-[[package]]
-name = "pem"
-version = "3.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d30c53c26bc5b31a98cd02d20f25a7c8567146caf63ed593a9d87b2775291be"
-dependencies = [
- "base64 0.22.1",
- "serde_core",
 ]
 
 [[package]]
@@ -2648,30 +2601,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rfd"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a15ad77d9e70a92437d8f74c35d99b4e4691128df018833e99f90bcd36152672"
-dependencies = [
- "block2",
- "dispatch2",
- "glib-sys",
- "gobject-sys",
- "gtk-sys",
- "js-sys",
- "log",
- "objc2",
- "objc2-app-kit",
- "objc2-core-foundation",
- "objc2-foundation",
- "raw-window-handle",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "windows-sys 0.60.2",
-]
-
-[[package]]
 name = "ring"
 version = "0.17.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3027,14 +2956,11 @@ dependencies = [
 name = "sheets-reader"
 version = "0.2.0"
 dependencies = [
- "chrono",
- "jsonwebtoken",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
- "tauri-plugin-dialog",
  "urlencoding",
 ]
 
@@ -3049,18 +2975,6 @@ name = "simd-adler32"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "703d5c7ef118737c72f1af64ad2f6f8c5e1921f818cdcb97b8fe6fc69bf66214"
-
-[[package]]
-name = "simple_asn1"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d585997b0ac10be3c5ee635f1bab02d512760d14b7c468801ac8a01d9ae5f1d"
-dependencies = [
- "num-bigint",
- "num-traits",
- "thiserror 2.0.18",
- "time",
-]
 
 [[package]]
 name = "siphasher"
@@ -3413,64 +3327,6 @@ dependencies = [
  "syn 2.0.117",
  "tauri-codegen",
  "tauri-utils",
-]
-
-[[package]]
-name = "tauri-plugin"
-version = "2.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e126abc9e84e35cdfd01596140a73a1850cdb0df0a23acf0185776c30b469a6e"
-dependencies = [
- "anyhow",
- "glob",
- "plist",
- "schemars 0.8.22",
- "serde",
- "serde_json",
- "tauri-utils",
- "walkdir",
-]
-
-[[package]]
-name = "tauri-plugin-dialog"
-version = "2.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65981abb771e74e571a38196c3baa11c459379164791eba0e67abc1a5fac9884"
-dependencies = [
- "log",
- "raw-window-handle",
- "rfd",
- "serde",
- "serde_json",
- "tauri",
- "tauri-plugin",
- "tauri-plugin-fs",
- "thiserror 2.0.18",
- "url",
-]
-
-[[package]]
-name = "tauri-plugin-fs"
-version = "2.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7ecc274121aca0c036a2b42d1cbe83d368d348f54e0bb8a735c2b1548e8f371"
-dependencies = [
- "anyhow",
- "dunce",
- "glob",
- "log",
- "objc2-foundation",
- "percent-encoding",
- "schemars 0.8.22",
- "serde",
- "serde_json",
- "serde_repr",
- "tauri",
- "tauri-plugin",
- "tauri-utils",
- "thiserror 2.0.18",
- "toml 1.1.2+spec-1.1.0",
- "url",
 ]
 
 [[package]]

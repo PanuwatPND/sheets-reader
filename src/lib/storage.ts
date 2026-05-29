@@ -12,7 +12,6 @@ export function loadSettings(): Settings {
     return {
       ...base,
       ...parsed,
-      readMode: "publicLink",
       cellRange: parsed.cellRange ?? parsed.range?.split("!").pop() ?? base.cellRange,
       sheetTabs: parsed.sheetTabs ?? base.sheetTabs,
       actionFilter: parsed.actionFilter ?? base.actionFilter,

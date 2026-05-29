@@ -83,7 +83,6 @@ watch(sheetBoards, (boards) => {
 });
 
 onMounted(async () => {
-  settings.value.readMode = "publicLink";
   if (settings.value.spreadsheetInput.trim()) {
     await fetchData();
   } else {
@@ -99,8 +98,6 @@ async function fetchData() {
     const result = await invoke<MultiFetchResult>("fetch_sheets", {
       spreadsheetInput: settings.value.spreadsheetInput,
       sheetTabs: settings.value.sheetTabs,
-      cellRange: settings.value.cellRange,
-      readMode: "publicLink",
     });
     sheets.value = result.sheets;
     fetchWarnings.value = result.warnings;

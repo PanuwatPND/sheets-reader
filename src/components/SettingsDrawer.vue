@@ -32,7 +32,6 @@ const emit = defineEmits<{
 
       <div class="drawer-body">
         <p class="public-note">
-          ใช้ลิงก์ public — ไม่ต้องใช้ Service Account<br />
           ชีทต้อง Share → <strong>Anyone with the link</strong> (Viewer)
         </p>
 

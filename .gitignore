@@ -2,10 +2,6 @@
 node_modules/
 dist/
 .build/
-legacy-swift/.build/
-legacy-swift/.swiftpm/
-*.xcodeproj
-DerivedData/
 
 # Tauri
 src-tauri/target/

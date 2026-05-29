@@ -1,6 +1,6 @@
-# Google Sheets Reader (Tauri + Vue)
+# Sheets Reader
 
-แอป macOS อ่าน Google Sheets สรุปงานตามชื่อ พร้อม **ไอคอนที่ menubar** (ปิดหน้าต่างแล้วยังรันอยู่)
+แอป macOS อ่าน Google Sheets แสดงเป็น Kanban board พร้อม **ไอคอนที่ menubar** (ปิดหน้าต่างแล้วยังรันอยู่)
 
 ## ความต้องการ
 
@@ -30,24 +30,18 @@ npm run tauri build
 - คลิกไอคอนที่ **menubar** เพื่อเปิด/ซ่อนหน้าต่าง
 - คลิกขวาที่ไอคอน → เมนู เปิด / ซ่อน / ออกจากแอป
 
-## โหมดอ่านข้อมูล
-
-### ลิงก์ public (แนะนำ)
+## การเชื่อมต่อ Google Sheets
 
 1. Share ชีท → **Anyone with the link** (Viewer)
-2. วางลิงก์ในแอป → กด **อ่านข้อมูล**
+2. วางลิงก์ในแอป → กด ⚙ → **อ่านข้อมูล**
+3. ระบุแท็บ เช่น `FE-tasks, Bugs`
 
-### Service Account
+## ฟีเจอร์
 
-1. สร้าง key จาก Google Cloud (เปิด Sheets API)
-2. Share ชีทให้อีเมล `client_email` ในไฟล์ JSON
-3. เลือกไฟล์ key ในแอป + ระบุ Range เช่น `Sheet1!A1:Z1000`
-
-## สรุปงาน
-
-- นับจำนวนงานที่ตรงชื่อ (เช่น POND)
-- รายการแบบ bullet (`•`) ในช่องข้อความ — **คัดลอกง่าย** (⌘A / ⌘C)
-- เลือกคอลัมน์ค้นหา / กรองเฉพาะงานที่ตรง / แสดงตารางเต็ม (tab)
+- Kanban board จัดกลุ่มตาม Status
+- กรอง Assignee, Action, Status
+- อ่านหลายแท็บตามชื่อ (ไม่โหลดทั้งชีท)
+- คัดลอกสรุปงานเป็น text
 
 ## โครงสร้าง
 
@@ -56,5 +50,3 @@ npm run tauri build
 | UI | Vue 3 + TypeScript |
 | Backend | Rust (Tauri 2) |
 | Menubar | Tauri Tray API |
-
-โค้ด Swift เดิมเก็บไว้ที่ `legacy-swift/` (ไม่ใช้แล้ว)
