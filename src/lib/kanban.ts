@@ -7,12 +7,16 @@ export interface ChecklistItem {
 
 export interface TaskCard {
   id: number;
+  /** 1-based row number in the Google Sheet (matches row labels in Sheets). */
+  sheetRow: number;
   title: string;
   category: string | null;
   headline: string;
   checklist: ChecklistItem[];
   status: string;
   action: string;
+  flowId: string;
+  taskId: string;
   assignees: string[];
   tags: string[];
   isMatch: boolean;
@@ -33,6 +37,8 @@ export interface ColumnMapping {
   statusColumn: number | null;
   assigneeColumn: number | null;
   actionColumn: number | null;
+  flowIdColumn: number | null;
+  idColumn: number | null;
   tagColumns: number[];
 }
 
@@ -63,11 +69,7 @@ const STATUS_TONE: Record<string, KanbanColumn["tone"]> = {
 };
 
 function norm(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "");
+  return value.trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
 }
 
 function headerMatches(header: string, patterns: string[]): boolean {
@@ -103,9 +105,12 @@ export function autoDetectMapping(headers: string[]): ColumnMapping {
   let statusColumn: number | null = null;
   let assigneeColumn: number | null = null;
   let actionColumn: number | null = null;
+  let flowIdColumn: number | null = null;
+  let idColumn: number | null = null;
   const tagColumns: number[] = [];
 
   headers.forEach((header, index) => {
+    const h = norm(header);
     if (titleColumn === null && headerMatches(header, titlePatterns)) {
       titleColumn = index;
     }
@@ -117,6 +122,12 @@ export function autoDetectMapping(headers: string[]): ColumnMapping {
     }
     if (actionColumn === null && headerMatches(header, ["action"])) {
       actionColumn = index;
+    }
+    if (flowIdColumn === null && (h === "flow id" || h === "flowid")) {
+      flowIdColumn = index;
+    }
+    if (idColumn === null && h === "id") {
+      idColumn = index;
     }
     if (headerMatches(header, tagPatterns)) {
       tagColumns.push(index);
@@ -134,7 +145,15 @@ export function autoDetectMapping(headers: string[]): ColumnMapping {
     if (titleColumn < 0) titleColumn = 0;
   }
 
-  return { titleColumn, statusColumn, assigneeColumn, actionColumn, tagColumns };
+  return {
+    titleColumn,
+    statusColumn,
+    assigneeColumn,
+    actionColumn,
+    flowIdColumn,
+    idColumn,
+    tagColumns,
+  };
 }
 
 function cell(row: string[], col: number | null): string {
@@ -172,7 +191,11 @@ export interface StatusChipStyle {
 
 export function statusChipStyle(status: string): StatusChipStyle {
   const key = norm(status);
-  if (key.includes("done") || key.includes("complete") || key.includes("เสร็จ")) {
+  if (
+    key.includes("done") ||
+    key.includes("complete") ||
+    key.includes("เสร็จ")
+  ) {
     return { bg: "#059669", color: "#fff" };
   }
   if (key.includes("uat")) return { bg: "#d1fae5", color: "#047857" };
@@ -189,12 +212,17 @@ export function statusChipStyle(status: string): StatusChipStyle {
     return { bg: "#f3f4f6", color: "#374151" };
   }
   if (key.includes("อัพ") || key.includes("dev")) {
-    return { bg: "#ede9fe", color: "#6d28d9" };
+    return { bg: "#e0f2fe", color: "#0369a1" };
   }
-  if (key.includes("กำลังทำ") || key.includes("doing") || key.includes("progress")) {
+  if (
+    key.includes("กำลังทำ") ||
+    key.includes("doing") ||
+    key.includes("progress")
+  ) {
     return { bg: "#dbeafe", color: "#1d4ed8" };
   }
-  if (key.includes("block") || key.includes("รอ")) return { bg: "#fce7f3", color: "#be185d" };
+  if (key.includes("block") || key.includes("รอ"))
+    return { bg: "#fce7f3", color: "#be185d" };
   return { bg: "#f3f4f6", color: "#374151" };
 }
 
@@ -235,7 +263,15 @@ export function collectStatuses(
 
   for (const row of dataRows) {
     if (settings.showOnlyMatches) {
-      if (!matchesTask(row, settings.nameQuery, mapping, settings.nameColumn)) {
+      if (
+        !matchesTask(
+          row,
+          settings.nameQuery,
+          mapping,
+          settings.nameColumn,
+          settings.includeSharedAssignees,
+        )
+      ) {
         continue;
       }
     }
@@ -251,7 +287,15 @@ export function collectStatuses(
   return list.sort((a, b) => statusSortKey(a) - statusSortKey(b));
 }
 
+function isUnspecifiedStatus(status: string): boolean {
+  const s = status.trim();
+  if (!s || s === "ไม่ระบุ") return true;
+  const key = norm(s);
+  return key === "unspecified" || key === "unknown";
+}
+
 function statusSortKey(status: string): number {
+  if (isUnspecifiedStatus(status)) return -1;
   const num = status.trim().match(/^(\d+)/);
   if (num) return parseInt(num[1], 10);
   const key = norm(status);
@@ -273,6 +317,8 @@ function pickTitle(row: string[], mapping: ColumnMapping): string | null {
       mapping.statusColumn,
       mapping.actionColumn,
       mapping.assigneeColumn,
+      mapping.flowIdColumn,
+      mapping.idColumn,
       ...mapping.tagColumns,
     ].filter((c): c is number => c !== null),
   );
@@ -362,28 +408,50 @@ function pickStatus(row: string[], mapping: ColumnMapping): string {
   return "ไม่ระบุ";
 }
 
-/** Match by assignee column by default — avoids showing others' tasks. */
+/** Match by assignee column — supports multiple names in one cell. */
 export function matchesTask(
   row: string[],
   nameQuery: string,
   mapping: ColumnMapping,
   nameColumn: number | null,
+  includeSharedAssignees: boolean,
 ): boolean {
   const q = norm(nameQuery);
   if (!q) return false;
+
+  const assignees = assigneesForRow(row, mapping, nameColumn);
+  if (assignees.length > 0) {
+    const hasName = assignees.some((a) => norm(a).includes(q));
+    if (!hasName) return false;
+    if (!includeSharedAssignees) {
+      return assignees.length === 1;
+    }
+    return true;
+  }
 
   if (nameColumn !== null && nameColumn < row.length) {
     return norm(row[nameColumn]).includes(q);
   }
 
-  const assigneeCols = new Set<number>();
-  if (mapping.assigneeColumn !== null) assigneeCols.add(mapping.assigneeColumn);
-
-  for (const col of assigneeCols) {
-    if (col < row.length && norm(row[col]).includes(q)) return true;
+  if (mapping.assigneeColumn !== null && mapping.assigneeColumn < row.length) {
+    return norm(row[mapping.assigneeColumn]).includes(q);
   }
 
   return false;
+}
+
+function assigneesForRow(
+  row: string[],
+  mapping: ColumnMapping,
+  nameColumn: number | null,
+): string[] {
+  if (nameColumn !== null && nameColumn < row.length) {
+    return splitPeople(row[nameColumn]);
+  }
+  if (mapping.assigneeColumn !== null && mapping.assigneeColumn < row.length) {
+    return splitPeople(row[mapping.assigneeColumn]);
+  }
+  return [];
 }
 
 export function matchesAction(
@@ -403,7 +471,15 @@ function rowVisible(
   mapping: ColumnMapping,
 ): boolean {
   if (settings.showOnlyMatches) {
-    if (!matchesTask(row, settings.nameQuery, mapping, settings.nameColumn)) {
+    if (
+      !matchesTask(
+        row,
+        settings.nameQuery,
+        mapping,
+        settings.nameColumn,
+        settings.includeSharedAssignees,
+      )
+    ) {
       return false;
     }
   }
@@ -437,6 +513,8 @@ export function buildKanban(
     mapping.statusColumn,
     mapping.assigneeColumn,
     mapping.actionColumn,
+    mapping.flowIdColumn,
+    mapping.idColumn,
     ...mapping.tagColumns,
   ]);
 
@@ -454,6 +532,8 @@ export function buildKanban(
       if (norm(headline) === norm(status)) return null;
 
       const action = cell(row, mapping.actionColumn);
+      const flowId = cell(row, mapping.flowIdColumn);
+      const taskId = cell(row, mapping.idColumn);
       const assignees = splitPeople(cell(row, mapping.assigneeColumn));
       let tags = mapping.tagColumns
         .map((col) => cell(row, col))
@@ -475,15 +555,19 @@ export function buildKanban(
         settings.nameQuery,
         mapping,
         settings.nameColumn,
+        settings.includeSharedAssignees,
       );
       return {
         id: index,
+        sheetRow: index + (settings.firstRowIsHeader ? 2 : 1),
         title,
         category,
         headline,
         checklist,
         status,
         action,
+        flowId,
+        taskId,
         assignees,
         tags,
         isMatch,
@@ -501,15 +585,17 @@ export function buildKanban(
   return [...groups.entries()]
     .sort(([a], [b]) => statusSortKey(a) - statusSortKey(b))
     .map(([label, groupCards]) => {
+      const ordered = [...groupCards].sort((a, b) => b.sheetRow - a.sheetRow);
       const overflow =
-        groupCards.length > MAX_CARDS_PER_COLUMN
-          ? groupCards.length - MAX_CARDS_PER_COLUMN
+        ordered.length > MAX_CARDS_PER_COLUMN
+          ? ordered.length - MAX_CARDS_PER_COLUMN
           : 0;
       return {
         id: norm(label).replace(/\s+/g, "-") || "unknown",
         label,
         tone: statusTone(label),
-        cards: overflow > 0 ? groupCards.slice(0, MAX_CARDS_PER_COLUMN) : groupCards,
+        cards:
+          overflow > 0 ? ordered.slice(0, MAX_CARDS_PER_COLUMN) : ordered,
         overflowCount: overflow > 0 ? overflow : undefined,
       };
     })
@@ -530,8 +616,12 @@ export function buildKanbanCopyText(columns: KanbanColumn[]): string {
             : "";
         const tags =
           c.tags.length > 0 ? ` [${c.tags.slice(0, 3).join(", ")}]` : "";
+        const refs =
+          c.flowId || c.taskId
+            ? ` (${[c.flowId && `Flow ${c.flowId}`, c.taskId].filter(Boolean).join(" · ")})`
+            : "";
         const head = c.category ? `[${c.category}] ${c.headline}` : c.headline;
-        return `  • ${head}${tags}${sub}`;
+        return `  • ${head}${refs}${tags}${sub}`;
       });
       return `${col.label} (${col.cards.length})\n${lines.join("\n")}`;
     })
@@ -548,12 +638,12 @@ export function initials(name: string): string {
 
 export function avatarColor(name: string): string {
   const palette = [
-    "#6366f1",
-    "#ec4899",
+    "#0369a1",
+    "#0d9488",
     "#f59e0b",
     "#10b981",
-    "#8b5cf6",
-    "#3b82f6",
+    "#0284c7",
+    "#64748b",
   ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {

@@ -24,89 +24,148 @@ const emit = defineEmits<{
   <div class="drawer-backdrop" @click.self="emit('close')">
     <aside class="drawer">
       <header class="drawer-head">
-        <h2>ตั้งค่า</h2>
-        <button type="button" class="icon-btn" title="ปิด" @click="emit('close')">
+        <div class="drawer-head-text">
+          <h2>ตั้งค่า</h2>
+          <p class="drawer-sub">เชื่อมต่อและกรองข้อมูลจาก Google Sheets</p>
+        </div>
+        <button
+          type="button"
+          class="drawer-close"
+          title="ปิด"
+          @click="emit('close')"
+        >
           ✕
         </button>
       </header>
 
       <div class="drawer-body">
-        <p class="public-note">
-          ชีทต้อง Share → <strong>Anyone with the link</strong> (Viewer)
-        </p>
+        <section class="settings-section">
+          <h3 class="settings-section-title">แหล่งข้อมูล</h3>
+          <div class="settings-card">
+            <div class="settings-callout">
+              <span class="settings-callout-icon" aria-hidden="true">🔗</span>
+              <p>
+                ชีทต้อง Share เป็น
+                <strong>Anyone with the link</strong> (Viewer)
+              </p>
+            </div>
 
-        <div class="field">
-          <label>Spreadsheet URL หรือ ID</label>
-          <input
-            v-model="settings.spreadsheetInput"
-            type="text"
-            placeholder="วางลิงก์ Google Sheets"
-            @keydown.enter.meta.prevent="emit('fetch')"
-          />
-        </div>
+            <div class="settings-field">
+              <label for="sheet-url">Spreadsheet URL หรือ ID</label>
+              <input
+                id="sheet-url"
+                v-model="settings.spreadsheetInput"
+                type="text"
+                class="settings-input"
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+                @keydown.enter.meta.prevent="emit('fetch')"
+              />
+            </div>
 
-        <div class="field">
-          <label>แท็บที่ต้องการอ่าน</label>
-          <input
-            v-model="settings.sheetTabs"
-            type="text"
-            placeholder="FE-tasks, Bugs"
-          />
-          <span class="field-hint">คั่นด้วย comma — อ่านเฉพาะแท็บนี้ ไม่โหลดทั้งชีท</span>
-        </div>
+            <div class="settings-field-row">
+              <div class="settings-field">
+                <label for="sheet-tabs">แท็บที่อ่าน</label>
+                <input
+                  id="sheet-tabs"
+                  v-model="settings.sheetTabs"
+                  type="text"
+                  class="settings-input"
+                  placeholder="FE-tasks, Bugs"
+                />
+                <span class="settings-hint">คั่นด้วย comma</span>
+              </div>
+              <div class="settings-field settings-field--narrow">
+                <label for="cell-range">ช่วงเซลล์</label>
+                <input
+                  id="cell-range"
+                  v-model="settings.cellRange"
+                  type="text"
+                  class="settings-input"
+                  placeholder="A1:T2000"
+                />
+              </div>
+            </div>
 
-        <div class="field">
-          <label>ช่วงเซลล์ (ทุกแท็บ)</label>
-          <input
-            v-model="settings.cellRange"
-            type="text"
-            placeholder="A1:Z2000"
-          />
-        </div>
+            <label class="settings-switch">
+              <span class="settings-switch-text">แถวแรกเป็นหัวตาราง</span>
+              <input
+                v-model="settings.firstRowIsHeader"
+                type="checkbox"
+                class="settings-switch-input"
+              />
+              <span class="settings-switch-track" aria-hidden="true" />
+            </label>
+          </div>
+        </section>
 
-        <label class="toggles inline">
-          <input v-model="settings.firstRowIsHeader" type="checkbox" />
-          แถวแรกเป็นหัวตาราง
-        </label>
+        <section class="settings-section">
+          <h3 class="settings-section-title">การกรองงาน</h3>
+          <div class="settings-card">
+            <div class="settings-field">
+              <label for="name-column">ค้นจากคอลัมน์</label>
+              <select
+                id="name-column"
+                v-model="settings.nameColumn"
+                class="settings-input settings-select"
+              >
+                <option :value="null">Assignee / Doing (แนะนำ)</option>
+                <option v-for="c in cols" :key="c" :value="c - 1">
+                  {{ columnLabel(c - 1, rows, settings.firstRowIsHeader) }}
+                </option>
+              </select>
+              <span class="settings-hint">
+                กรองจาก Assignee — ไม่เห็นงานของคนอื่น
+              </span>
+            </div>
 
+            <label class="settings-switch">
+              <span class="settings-switch-text">
+                <span class="settings-switch-label">รวมงานที่ assign หลายคน</span>
+                <span class="settings-switch-desc">
+                  เปิด = Pond + Bank · ปิด = ชื่อคุณคนเดียว
+                </span>
+              </span>
+              <input
+                v-model="settings.includeSharedAssignees"
+                type="checkbox"
+                class="settings-switch-input"
+              />
+              <span class="settings-switch-track" aria-hidden="true" />
+            </label>
+          </div>
+        </section>
+
+        <section class="settings-section">
+          <h3 class="settings-section-title">เพิ่มเติม</h3>
+          <div class="settings-card settings-card--compact">
+            <label class="settings-switch">
+              <span class="settings-switch-text">ดูตารางดิบ</span>
+              <input
+                v-model="settings.showRawTable"
+                type="checkbox"
+                class="settings-switch-input"
+              />
+              <span class="settings-switch-track" aria-hidden="true" />
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <footer class="drawer-foot">
+        <p v-if="error" class="drawer-error">{{ error }}</p>
         <button
           type="button"
-          class="btn primary full"
-          :disabled="loading"
+          class="drawer-fetch"
+          :disabled="loading || !settings.spreadsheetInput.trim()"
           @click="emit('fetch')"
         >
+          <span v-if="loading" class="drawer-fetch-spinner" aria-hidden="true" />
           {{ loading ? "กำลังโหลด…" : "อ่านข้อมูล" }}
         </button>
-
-        <p v-if="error" class="error">{{ error }}</p>
-
-        <hr class="divider" />
-
-        <p class="section-label">จับคู่คอลัมน์</p>
-
-        <div class="field">
-          <label>ค้นจากคอลัมน์ (ชื่อ)</label>
-          <select v-model="settings.nameColumn">
-            <option :value="null">Assignee / Doing (แนะนำ)</option>
-            <option v-for="c in cols" :key="c" :value="c - 1">
-              {{ columnLabel(c - 1, rows, settings.firstRowIsHeader) }}
-            </option>
-          </select>
-        </div>
-
-        <p class="field-hint">
-          ค่าเริ่มต้นกรองจากคอลัมน์ Assignee เท่านั้น — จะไม่เห็นงานของคนอื่น
-        </p>
-
-        <label class="toggles inline">
-          <input v-model="settings.showRawTable" type="checkbox" />
-          ดูตารางดิบ
-        </label>
-
-        <p class="tray-note">
+        <p class="drawer-foot-note">
           ปิดหน้าต่างแล้วแอปยังอยู่ที่ menubar
         </p>
-      </div>
+      </footer>
     </aside>
   </div>
 </template>

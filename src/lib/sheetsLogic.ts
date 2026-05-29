@@ -31,6 +31,8 @@ export interface Settings {
   nameQuery: string;
   nameColumn: number | null;
   showOnlyMatches: boolean;
+  /** When false, only tasks with a single assignee matching nameQuery. */
+  includeSharedAssignees: boolean;
   actionFilter: ActionFilter;
   /** Status labels hidden from the Kanban board */
   hiddenStatuses: string[];
@@ -55,6 +57,7 @@ export const defaultSettings = (): Settings => ({
   nameQuery: "POND",
   nameColumn: null,
   showOnlyMatches: true,
+  includeSharedAssignees: true,
   actionFilter: "This week",
   hiddenStatuses: [],
   showRawTable: false,

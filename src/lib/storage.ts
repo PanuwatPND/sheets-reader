@@ -16,6 +16,8 @@ export function loadSettings(): Settings {
       sheetTabs: parsed.sheetTabs ?? base.sheetTabs,
       actionFilter: parsed.actionFilter ?? base.actionFilter,
       hiddenStatuses: parsed.hiddenStatuses ?? base.hiddenStatuses,
+      includeSharedAssignees:
+        parsed.includeSharedAssignees ?? base.includeSharedAssignees,
     };
   } catch {
     return defaultSettings();

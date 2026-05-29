@@ -60,21 +60,42 @@ function categoryTone(cat: string): string {
             :key="card.id"
             class="task-card"
           >
-            <div v-if="card.category || card.action" class="card-meta">
-              <span
-                v-if="card.category"
-                class="category-badge"
-                :data-kind="categoryTone(card.category)"
-              >
-                {{ card.category }}
-              </span>
-              <span
-                v-if="card.action"
-                class="action-badge"
-                :data-action="actionTone(card.action)"
-              >
-                {{ card.action }}
-              </span>
+            <div
+              v-if="
+                card.category ||
+                card.action ||
+                card.flowId ||
+                card.taskId
+              "
+              class="card-top"
+            >
+              <div v-if="card.category || card.action" class="card-meta">
+                <span
+                  v-if="card.category"
+                  class="category-badge"
+                  :data-kind="categoryTone(card.category)"
+                >
+                  {{ card.category }}
+                </span>
+                <span
+                  v-if="card.action"
+                  class="action-badge"
+                  :data-action="actionTone(card.action)"
+                >
+                  {{ card.action }}
+                </span>
+              </div>
+
+              <div v-if="card.flowId || card.taskId" class="card-refs">
+                <span v-if="card.flowId" class="card-ref">
+                  <span class="card-ref-label">Flow</span>
+                  {{ card.flowId }}
+                </span>
+                <span v-if="card.flowId && card.taskId" class="card-ref-sep">·</span>
+                <span v-if="card.taskId" class="card-ref card-ref-id">
+                  {{ card.taskId }}
+                </span>
+              </div>
             </div>
 
             <h3
