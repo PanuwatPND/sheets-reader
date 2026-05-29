@@ -1,0 +1,16 @@
+.DS_Store
+node_modules/
+dist/
+.build/
+legacy-swift/.build/
+legacy-swift/.swiftpm/
+*.xcodeproj
+DerivedData/
+
+# Tauri
+src-tauri/target/
+
+# Never commit credentials
+*service-account*.json
+*credentials*.json
+*.pem
