@@ -1,4 +1,13 @@
 import type { Settings } from "./sheetsLogic";
+import type { ActionFilter } from "./sheetsLogic";
+import {
+  isRangeAfterWeek,
+  nextWorkWeekRange,
+  parseDateRangeFromCell,
+  rangesOverlap,
+  workWeekRange,
+  type DateRange,
+} from "./weekDates";
 
 export interface ChecklistItem {
   done: boolean;
@@ -37,6 +46,7 @@ export interface ColumnMapping {
   statusColumn: number | null;
   assigneeColumn: number | null;
   actionColumn: number | null;
+  weekDateColumn: number | null;
   flowIdColumn: number | null;
   idColumn: number | null;
   tagColumns: number[];
@@ -105,6 +115,7 @@ export function autoDetectMapping(headers: string[]): ColumnMapping {
   let statusColumn: number | null = null;
   let assigneeColumn: number | null = null;
   let actionColumn: number | null = null;
+  let weekDateColumn: number | null = null;
   let flowIdColumn: number | null = null;
   let idColumn: number | null = null;
   const tagColumns: number[] = [];
@@ -122,6 +133,22 @@ export function autoDetectMapping(headers: string[]): ColumnMapping {
     }
     if (actionColumn === null && headerMatches(header, ["action"])) {
       actionColumn = index;
+    }
+    if (
+      weekDateColumn === null &&
+      headerMatches(header, [
+        "week",
+        "date",
+        "due",
+        "deadline",
+        "target",
+        "schedule",
+        "period",
+        "สัปดาห์",
+        "วันที่",
+      ])
+    ) {
+      weekDateColumn = index;
     }
     if (flowIdColumn === null && (h === "flow id" || h === "flowid")) {
       flowIdColumn = index;
@@ -150,6 +177,7 @@ export function autoDetectMapping(headers: string[]): ColumnMapping {
     statusColumn,
     assigneeColumn,
     actionColumn,
+    weekDateColumn,
     flowIdColumn,
     idColumn,
     tagColumns,
@@ -454,15 +482,71 @@ function assigneesForRow(
   return [];
 }
 
+function getRowDateRange(
+  row: string[],
+  mapping: ColumnMapping,
+  now = new Date(),
+): DateRange | null {
+  if (mapping.weekDateColumn !== null) {
+    const fromCol = cell(row, mapping.weekDateColumn);
+    const parsed = parseDateRangeFromCell(fromCol, now);
+    if (parsed) return parsed;
+  }
+
+  const skip = new Set(
+    [
+      mapping.titleColumn,
+      mapping.statusColumn,
+      mapping.assigneeColumn,
+      mapping.actionColumn,
+      mapping.flowIdColumn,
+      mapping.idColumn,
+      ...mapping.tagColumns,
+    ].filter((c): c is number => c !== null),
+  );
+
+  for (let col = 0; col < row.length; col++) {
+    if (skip.has(col)) continue;
+    const v = row[col]?.trim() ?? "";
+    if (!v || v.length > 48) continue;
+    const parsed = parseDateRangeFromCell(v, now);
+    if (parsed) return parsed;
+  }
+
+  return null;
+}
+
 export function matchesAction(
   row: string[],
   mapping: ColumnMapping,
-  actionFilter: string,
+  actionFilter: ActionFilter,
+  now = new Date(),
 ): boolean {
   if (!actionFilter) return true;
+
+  const actionValue =
+    mapping.actionColumn !== null ? cell(row, mapping.actionColumn) : "";
+  const rowRange = getRowDateRange(row, mapping, now);
+
+  if (actionFilter === "This week") {
+    const week = workWeekRange(now);
+    if (rowRange) return rangesOverlap(rowRange, week);
+    return norm(actionValue) === "this week";
+  }
+
+  if (actionFilter === "Next week") {
+    const week = nextWorkWeekRange(now);
+    if (rowRange) return rangesOverlap(rowRange, week);
+    return norm(actionValue) === "next week";
+  }
+
+  if (actionFilter === "Later") {
+    if (rowRange) return isRangeAfterWeek(rowRange, nextWorkWeekRange(now));
+    return norm(actionValue) === "later";
+  }
+
   if (mapping.actionColumn === null) return true;
-  const value = cell(row, mapping.actionColumn);
-  return norm(value) === norm(actionFilter);
+  return norm(actionValue) === norm(actionFilter);
 }
 
 function rowVisible(
@@ -513,6 +597,7 @@ export function buildKanban(
     mapping.statusColumn,
     mapping.assigneeColumn,
     mapping.actionColumn,
+    mapping.weekDateColumn,
     mapping.flowIdColumn,
     mapping.idColumn,
     ...mapping.tagColumns,

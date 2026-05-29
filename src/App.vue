@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import KanbanBoard from "./components/KanbanBoard.vue";
 import SettingsDrawer from "./components/SettingsDrawer.vue";
+import ActionFilter from "./components/ActionFilter.vue";
 import StatusFilter from "./components/StatusFilter.vue";
 import {
   autoDetectMapping,
@@ -15,13 +16,11 @@ import {
   buildFullTableText,
   columnCount,
   columnLabel,
-  ACTION_OPTIONS,
   type MultiFetchResult,
   type Settings,
   type SheetData,
 } from "./lib/sheetsLogic";
 import { loadSettings, saveSettings } from "./lib/storage";
-
 const settings = ref<Settings>(loadSettings());
 const sheets = ref<SheetData[]>([]);
 const fetchWarnings = ref<string[]>([]);
@@ -133,7 +132,6 @@ function copySummary() {
   });
 }
 
-const rawRef = ref<HTMLTextAreaElement | null>(null);
 </script>
 
 <template>
@@ -232,21 +230,7 @@ const rawRef = ref<HTMLTextAreaElement | null>(null);
           :mapping="activeBoard.mapping"
         />
 
-        <div class="action-filter">
-          <span class="action-label">Action</span>
-          <div class="action-pills">
-            <button
-              v-for="opt in ACTION_OPTIONS"
-              :key="opt.label"
-              type="button"
-              class="action-pill"
-              :class="[opt.tone, { active: settings.actionFilter === opt.value }]"
-              @click="settings.actionFilter = opt.value"
-            >
-              {{ opt.label }}
-            </button>
-          </div>
-        </div>
+        <ActionFilter :settings="settings" />
       </div>
     </nav>
 

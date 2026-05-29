@@ -1,10 +1,13 @@
 use tauri::{
+    image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, Runtime,
 };
 
 const TRAY_ID: &str = "main-tray";
+/// Black silhouette for macOS template (renders white on menubar).
+const TRAY_ICON: Image<'_> = tauri::include_image!("icons/tray-icon.png");
 
 pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let show = MenuItem::with_id(app, "show", "เปิด Sheets Reader", true, None::<&str>)?;
@@ -12,12 +15,8 @@ pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let quit = MenuItem::with_id(app, "quit", "ออกจากแอป", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &hide, &quit])?;
 
-    let Some(icon) = app.default_window_icon().cloned() else {
-        return Ok(());
-    };
-
     let _tray = TrayIconBuilder::with_id(TRAY_ID)
-        .icon(icon)
+        .icon(TRAY_ICON)
         .icon_as_template(true)
         .menu(&menu)
         .tooltip("Sheets Reader")

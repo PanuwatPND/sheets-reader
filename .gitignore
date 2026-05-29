@@ -1,11 +1,15 @@
 .DS_Store
+**/.DS_Store
 node_modules/
 dist/
 .build/
 
-# Tauri
+# Tauri / Rust
 src-tauri/target/
+src-tauri/src-tauri/
 src-tauri/gen/
+*.dmg
+*.a
 
 # Never commit credentials
 *service-account*.json

@@ -120,10 +120,9 @@ const emit = defineEmits<{
 
             <label class="settings-switch">
               <span class="settings-switch-text">
-                <span class="settings-switch-label">รวมงานที่ assign หลายคน</span>
-                <span class="settings-switch-desc">
-                  เปิด = Pond + Bank · ปิด = ชื่อคุณคนเดียว
-                </span>
+                <span class="settings-switch-label"
+                  >รวมงานที่ assign หลายคน</span
+                >
               </span>
               <input
                 v-model="settings.includeSharedAssignees"
@@ -159,12 +158,14 @@ const emit = defineEmits<{
           :disabled="loading || !settings.spreadsheetInput.trim()"
           @click="emit('fetch')"
         >
-          <span v-if="loading" class="drawer-fetch-spinner" aria-hidden="true" />
+          <span
+            v-if="loading"
+            class="drawer-fetch-spinner"
+            aria-hidden="true"
+          />
           {{ loading ? "กำลังโหลด…" : "อ่านข้อมูล" }}
         </button>
-        <p class="drawer-foot-note">
-          ปิดหน้าต่างแล้วแอปยังอยู่ที่ menubar
-        </p>
+        <p class="drawer-foot-note">ปิดหน้าต่างแล้วแอปยังอยู่ที่ menubar</p>
       </footer>
     </aside>
   </div>
