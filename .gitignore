@@ -5,6 +5,7 @@ dist/
 
 # Tauri
 src-tauri/target/
+src-tauri/gen/
 
 # Never commit credentials
 *service-account*.json
