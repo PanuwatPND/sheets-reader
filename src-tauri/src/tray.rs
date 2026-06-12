@@ -16,7 +16,7 @@ pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let menu = Menu::with_items(app, &[&show, &hide, &quit])?;
 
     let _tray = TrayIconBuilder::with_id(TRAY_ID)
-        .icon(TRAY_ICON)
+        .icon(TRAY_ICON)  
         .icon_as_template(true)
         .menu(&menu)
         .tooltip("Sheets Reader")
