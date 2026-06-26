@@ -14,6 +14,45 @@ async fn fetch_sheets(
 }
 
 #[tauri::command]
+async fn update_sheet_cell(
+    service_account_path: String,
+    spreadsheet_input: String,
+    sheet_name: String,
+    column: u32,
+    row: u32,
+    value: String,
+) -> Result<(), String> {
+    sheets::update_sheet_cell(
+        &service_account_path,
+        &spreadsheet_input,
+        &sheet_name,
+        column,
+        row,
+        &value,
+    )
+    .await
+}
+
+#[tauri::command]
+fn pick_service_account_file() -> Result<Option<String>, String> {
+    let file = rfd::FileDialog::new()
+        .set_title("เลือก Service Account JSON")
+        .add_filter("JSON", &["json"])
+        .pick_file();
+    Ok(file.map(|p| p.to_string_lossy().into_owned()))
+}
+
+#[tauri::command]
+fn read_service_account_email(path: String) -> Result<String, String> {
+    sheets::service_account_email(&path)
+}
+
+#[tauri::command]
+async fn test_service_account(path: String) -> Result<(), String> {
+    sheets::test_service_account(&path).await
+}
+
+#[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
     std::process::Command::new("open")
         .arg(&url)
@@ -57,7 +96,16 @@ fn show_notification(title: String, body: String) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![fetch_sheets, open_url, show_notification, set_tray_icon_data])
+        .invoke_handler(tauri::generate_handler![
+            fetch_sheets,
+            update_sheet_cell,
+            pick_service_account_file,
+            read_service_account_email,
+            test_service_account,
+            open_url,
+            show_notification,
+            set_tray_icon_data
+        ])
         .setup(|app| {
             tray::setup_tray(app.handle())?;
 

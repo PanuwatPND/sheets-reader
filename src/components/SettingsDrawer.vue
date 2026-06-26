@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
+import { invoke } from "@tauri-apps/api/core";
 import type { Settings } from "../lib/sheetsLogic";
 import SettingsInput from "./ui/SettingsInput.vue";
 import SettingsSelect from "./ui/SettingsSelect.vue";
@@ -18,6 +19,12 @@ const emit = defineEmits<{
   fetch: [];
 }>();
 
+const saEmail = ref<string | null>(null);
+const saError = ref<string | null>(null);
+const saTesting = ref(false);
+const saTestOk = ref(false);
+const saCopyNotice = ref<string | null>(null);
+
 const nameColumnOptions = computed(() => [
   { value: null as number | null, label: "Assignee / Doing (แนะนำ)" },
   ...Array.from({ length: props.cols }, (_, i) => ({
@@ -33,6 +40,64 @@ const autoRefreshOptions = [
   { value: 15, label: "ทุก 15 นาที" },
   { value: 30, label: "ทุก 30 นาที" },
 ];
+
+const saReady = computed(
+  () => !!props.settings.serviceAccountPath.trim() && !!saEmail.value && saTestOk.value,
+);
+
+async function loadSaEmail() {
+  saError.value = null;
+  saTestOk.value = false;
+  saEmail.value = null;
+  const path = props.settings.serviceAccountPath.trim();
+  if (!path) return;
+  try {
+    saEmail.value = await invoke<string>("read_service_account_email", { path });
+  } catch (e) {
+    saError.value = String(e);
+  }
+}
+
+watch(
+  () => props.settings.serviceAccountPath,
+  () => {
+    void loadSaEmail();
+  },
+  { immediate: true },
+);
+
+async function browseServiceAccount() {
+  const picked = await invoke<string | null>("pick_service_account_file");
+  if (picked) {
+    props.settings.serviceAccountPath = picked;
+  }
+}
+
+async function testServiceAccount() {
+  const path = props.settings.serviceAccountPath.trim();
+  if (!path) return;
+  saTesting.value = true;
+  saError.value = null;
+  saTestOk.value = false;
+  try {
+    await invoke("test_service_account", { path });
+    saTestOk.value = true;
+  } catch (e) {
+    saError.value = String(e);
+  } finally {
+    saTesting.value = false;
+  }
+}
+
+function copySaEmail() {
+  if (!saEmail.value) return;
+  navigator.clipboard.writeText(saEmail.value).then(() => {
+    saCopyNotice.value = "คัดลอกแล้ว";
+    setTimeout(() => {
+      saCopyNotice.value = null;
+    }, 2000);
+  });
+}
 </script>
 
 <template>
@@ -138,6 +203,76 @@ const autoRefreshOptions = [
         </section>
 
         <section class="settings-section">
+          <h3 class="settings-section-title">ย้ายสถานะจากแอพ</h3>
+          <div class="settings-card">
+            <div class="settings-callout settings-callout--info">
+              <span class="settings-callout-icon" aria-hidden="true">ℹ️</span>
+              <p>
+                <strong>ไม่ต้องเป็นเจ้าของชีท</strong> — Service Account สร้างจาก Google account ส่วนตัวได้ (ฟรี)
+                แล้วส่ง email ด้านล่างให้คนดูแลชีท (PM / admin) แชร์เป็น <strong>Editor</strong> แทนคุณ
+              </p>
+            </div>
+
+            <ol class="sa-steps">
+              <li>
+                เปิด
+                <a
+                  href="#"
+                  @click.prevent="invoke('open_url', { url: 'https://console.cloud.google.com/iam-admin/serviceaccounts' })"
+                >Google Cloud → Service Accounts</a>
+                สร้าง Service Account แล้วดาวน์โหลดไฟล์ JSON (ใช้ Gmail ส่วนตัวได้)
+              </li>
+              <li>เปิด Google Sheets API ในโปรเจกต์เดียวกัน (APIs &amp; Services → Library → Google Sheets API → Enable)</li>
+              <li>เลือกไฟล์ JSON → คัดลอก email → ส่งให้คนดูแลชีทแชร์เป็น <strong>Editor</strong></li>
+              <li>หลัง admin แชร์แล้ว กดทดสอบการเชื่อมต่อ แล้วลากการ์ดข้ามคอลัมน์ Kanban</li>
+            </ol>
+
+            <div class="settings-field">
+              <label for="service-account">ไฟล์ Service Account</label>
+              <div class="sa-file-row">
+                <div class="sa-file-input">
+                  <SettingsInput
+                    id="service-account"
+                    v-model="settings.serviceAccountPath"
+                    placeholder="เลือกไฟล์ .json"
+                  />
+                </div>
+                <button type="button" class="sa-btn" @click="browseServiceAccount">
+                  เลือกไฟล์
+                </button>
+              </div>
+            </div>
+
+            <div v-if="saEmail" class="sa-email-box">
+              <span class="sa-email-label">แชร์ชีทให้</span>
+              <code class="sa-email">{{ saEmail }}</code>
+              <button type="button" class="sa-btn sa-btn--small" @click="copySaEmail">
+                คัดลอก
+              </button>
+              <span v-if="saCopyNotice" class="sa-copy-notice">{{ saCopyNotice }}</span>
+            </div>
+
+            <div class="sa-actions">
+              <button
+                type="button"
+                class="sa-btn"
+                :disabled="!settings.serviceAccountPath.trim() || saTesting"
+                @click="testServiceAccount"
+              >
+                {{ saTesting ? "กำลังทดสอบ…" : "ทดสอบการเชื่อมต่อ" }}
+              </button>
+              <span v-if="saTestOk" class="sa-status sa-status--ok">พร้อมลากการ์ดย้ายสถานะ</span>
+              <span v-else-if="settings.serviceAccountPath.trim() && saEmail" class="sa-status">ยังไม่ได้ทดสอบ</span>
+            </div>
+
+            <p v-if="saError" class="sa-error">{{ saError }}</p>
+            <p v-if="saReady" class="settings-hint sa-ready-hint">
+              ตั้งค่าเสร็จแล้ว — ปิดหน้าต่างนี้แล้วลากการ์ดไปคอลัมน์สถานะใหม่ได้เลย
+            </p>
+          </div>
+        </section>
+
+        <section class="settings-section">
           <h3 class="settings-section-title">เพิ่มเติม</h3>
           <div class="settings-card settings-card--compact">
             <div class="settings-field">
@@ -170,6 +305,9 @@ const autoRefreshOptions = [
                 :options="autoRefreshOptions"
                 @update:model-value="(v) => (settings.autoRefreshMinutes = v as Settings['autoRefreshMinutes'])"
               />
+              <span class="settings-hint">
+                ตัวเลขนับถอยหลังจะแสดงข้างปุ่มรีเฟรช
+              </span>
             </div>
 
             <label class="settings-switch" style="margin-top: 4px;">

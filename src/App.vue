@@ -10,6 +10,7 @@ import {
   autoDetectMapping,
   buildKanban,
   buildKanbanCopyText,
+  isEmptyStatus,
   type ColumnMapping,
 } from "./lib/kanban";
 import {
@@ -28,6 +29,7 @@ const fetchWarnings = ref<string[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const copyNotice = ref<string | null>(null);
+const statusNotice = ref<string | null>(null);
 const showSettings = ref(false);
 const activeTab = ref("");
 
@@ -78,6 +80,23 @@ const spreadsheetId = computed(() =>
 );
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
+const lastRefreshAt = ref(Date.now());
+const now = ref(Date.now());
+let countdownTimer: ReturnType<typeof setInterval> | null = null;
+
+function markRefreshed() {
+  lastRefreshAt.value = Date.now();
+}
+
+const refreshCountdown = computed(() => {
+  const mins = settings.value.autoRefreshMinutes;
+  if (mins <= 0) return null;
+  const remainingMs = mins * 60 * 1000 - (now.value - lastRefreshAt.value);
+  const sec = Math.max(0, Math.ceil(remainingMs / 1000));
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+});
 
 function resetRefreshTimer() {
   if (refreshTimer !== null) { clearInterval(refreshTimer); refreshTimer = null; }
@@ -95,7 +114,7 @@ const trayCounts = computed(() => {
       const n = col.cards.filter((c) => c.isMatch).length;
       const label = col.label.trim();
       const lo = label.toLowerCase();
-      if (!label) notStarted += n;
+      if (isEmptyStatus(label)) notStarted += n;
       else if (label.includes("กำลังทำ")) inProgress += n;
       else if (lo.includes("รอ demo") || label.includes("รอเดโม")) waiting += n;
       else if (lo.includes("done") || col.tone === "green") done += n;
@@ -167,6 +186,7 @@ watch([trayCounts, () => settings.value.trayDisplay], ([counts, display]) => {
 watch(() => settings.value.autoRefreshMinutes, resetRefreshTimer);
 onUnmounted(() => {
   if (refreshTimer !== null) clearInterval(refreshTimer);
+  if (countdownTimer !== null) clearInterval(countdownTimer);
 });
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -184,6 +204,10 @@ watch(sheetBoards, (boards) => {
 });
 
 onMounted(async () => {
+  countdownTimer = setInterval(() => {
+    now.value = Date.now();
+  }, 1000);
+
   if (settings.value.spreadsheetInput.trim()) {
     await fetchData();
   } else {
@@ -208,7 +232,10 @@ async function fetchData() {
     if (!hasData.value) {
       error.value = "ไม่พบข้อมูลในแท็บที่เลือก";
     } else {
-      activeTab.value = sheets.value[0]?.name ?? "";
+      const tabNames = sheets.value.map((s) => s.name);
+      if (!activeTab.value || !tabNames.includes(activeTab.value)) {
+        activeTab.value = sheets.value[0]?.name ?? "";
+      }
       showSettings.value = false;
     }
     if (
@@ -237,6 +264,7 @@ async function fetchData() {
     error.value = String(e);
   } finally {
     loading.value = false;
+    markRefreshed();
   }
 }
 
@@ -272,6 +300,63 @@ function checkForNewTasks() {
 
   const body = newCards.map((c) => notifLine(c.displayTitle, c.sheetName)).join("\n");
   invoke("show_notification", { title: "Sheets Reader", body });
+}
+
+function updateLocalCell(
+  sheetName: string,
+  sheetRow: number,
+  column: number,
+  value: string,
+) {
+  const sheet = sheets.value.find((s) => s.name === sheetName);
+  if (!sheet) return;
+  const rowIndex = sheetRow - (settings.value.firstRowIsHeader ? 2 : 1);
+  if (rowIndex < 0 || rowIndex >= sheet.rows.length) return;
+  const row = sheet.rows[rowIndex];
+  while (row.length <= column) row.push("");
+  row[column] = value;
+}
+
+const statusWritable = computed(
+  () =>
+    !!settings.value.serviceAccountPath.trim() &&
+    activeBoard.value?.mapping.statusColumn !== null &&
+    activeBoard.value?.mapping.statusColumn !== undefined,
+);
+
+async function onStatusChange(payload: {
+  sheetRow: number;
+  fromStatus: string;
+  toStatus: string;
+}) {
+  const board = activeBoard.value;
+  const col = board?.mapping.statusColumn;
+  const sheetName = activeTab.value;
+  if (!board || col === null || col === undefined || !sheetName) return;
+  if (payload.fromStatus === payload.toStatus) return;
+
+  const cellValue = isEmptyStatus(payload.toStatus) ? "" : payload.toStatus;
+  const prevValue = isEmptyStatus(payload.fromStatus) ? "" : payload.fromStatus;
+
+  updateLocalCell(sheetName, payload.sheetRow, col, cellValue);
+
+  try {
+    await invoke("update_sheet_cell", {
+      serviceAccountPath: settings.value.serviceAccountPath,
+      spreadsheetInput: settings.value.spreadsheetInput,
+      sheetName,
+      column: col,
+      row: payload.sheetRow,
+      value: cellValue,
+    });
+    statusNotice.value = "อัปเดตสถานะแล้ว";
+    setTimeout(() => {
+      statusNotice.value = null;
+    }, 2000);
+  } catch (e) {
+    updateLocalCell(sheetName, payload.sheetRow, col, prevValue);
+    error.value = String(e);
+  }
 }
 
 function copySummary() {
@@ -330,7 +415,15 @@ function copySummary() {
         <div class="icon-group">
 
           <span v-if="loading" class="loading-dot" title="กำลังโหลด…" />
+          <span
+            v-else-if="refreshCountdown"
+            class="refresh-countdown"
+            :title="`รีเฟรชอัตโนมัติใน ${refreshCountdown}`"
+          >
+            {{ refreshCountdown }}
+          </span>
           <span v-if="copyNotice" class="notice">{{ copyNotice }}</span>
+          <span v-if="statusNotice" class="notice">{{ statusNotice }}</span>
           <button
             type="button"
             class="icon-btn"
@@ -410,6 +503,8 @@ function copySummary() {
           :compact="settings.showOnlyMatches"
           :spreadsheet-id="spreadsheetId"
           :sheet-name="activeBoard.name"
+          :writable="statusWritable"
+          @status-change="onStatusChange"
         />
       </template>
 

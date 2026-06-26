@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { collectStatuses, isStatusHidden, statusChipStyle, toggleStatusHidden } from "../lib/kanban";
+import { collectAllStatuses, isStatusHidden, statusChipStyle, toggleStatusHidden } from "../lib/kanban";
 import type { ColumnMapping } from "../lib/kanban";
 import type { Settings } from "../lib/sheetsLogic";
 
@@ -14,7 +14,7 @@ const open = ref(false);
 const root = ref<HTMLElement | null>(null);
 
 const statuses = computed(() =>
-  collectStatuses(props.rows, props.settings, props.mapping),
+  collectAllStatuses(props.rows, props.settings, props.mapping),
 );
 
 const visibleCount = computed(

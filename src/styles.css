@@ -732,6 +732,16 @@ textarea {
   color: var(--ok);
 }
 
+.refresh-countdown {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  min-width: 2.5rem;
+  text-align: center;
+  user-select: none;
+}
+
 .main {
   position: relative;
   z-index: 1;
@@ -914,6 +924,14 @@ textarea {
   border-radius: var(--radius);
   padding: 12px;
   border: 1px solid var(--border);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.kanban-column--drag-over {
+  border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .column-head {
@@ -948,7 +966,7 @@ textarea {
 
 .column-cards {
   flex: 1;
-  min-height: 0;
+  min-height: 48px;
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -973,6 +991,20 @@ textarea {
 .task-card:hover {
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
+}
+
+.task-card--draggable {
+  cursor: grab;
+}
+
+.task-card--draggable:active {
+  cursor: grabbing;
+}
+
+.task-card--dragging {
+  opacity: 0.45;
+  transform: scale(0.98);
+  box-shadow: none;
 }
 
 .card-top {
@@ -1386,6 +1418,16 @@ textarea {
   font-weight: 600;
 }
 
+.settings-callout--info {
+  background: #f8fafc;
+  border-color: var(--border);
+  margin-bottom: 12px;
+}
+
+.settings-callout--info p {
+  color: var(--text);
+}
+
 .settings-field {
   display: flex;
   flex-direction: column;
@@ -1504,6 +1546,137 @@ textarea {
   font-size: 11px;
   color: var(--muted);
   line-height: 1.35;
+}
+
+.sa-steps {
+  margin: 0 0 14px;
+  padding-left: 1.2rem;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.sa-steps li + li {
+  margin-top: 6px;
+}
+
+.sa-steps a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sa-steps a:hover {
+  text-decoration: underline;
+}
+
+.sa-file-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.sa-file-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.sa-btn {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sa-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.sa-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sa-btn--small {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.sa-email-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.sa-email-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sa-email {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  word-break: break-all;
+  color: var(--accent);
+}
+
+.sa-copy-notice {
+  font-size: 11px;
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.sa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.sa-status {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.sa-status--ok {
+  color: var(--ok);
+}
+
+.sa-error {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  white-space: pre-wrap;
+}
+
+.sa-ready-hint {
+  margin-top: 10px;
+  color: var(--ok);
+  font-weight: 600;
 }
 
 .settings-switch {

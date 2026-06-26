@@ -55,6 +55,9 @@ export interface KanbanResult {
 
 const MAX_CARDS_PER_COLUMN = 40;
 
+/** Rows with blank Status — work not picked up yet. */
+export const EMPTY_STATUS_LABEL = "ยังไม่มีสถานะ";
+
 export interface ColumnMapping {
   titleColumn: number | null;
   statusColumn: number | null;
@@ -94,6 +97,18 @@ const STATUS_TONE: Record<string, KanbanColumn["tone"]> = {
 
 function norm(value: string): string {
   return value.trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+}
+
+export function isEmptyStatus(status: string): boolean {
+  const s = status.trim();
+  if (!s) return true;
+  const key = norm(s);
+  return (
+    key === norm(EMPTY_STATUS_LABEL) ||
+    key === "ไม่ระบุ" ||
+    key === "unspecified" ||
+    key === "unknown"
+  );
 }
 
 function headerMatches(header: string, patterns: string[]): boolean {
@@ -265,6 +280,9 @@ export function statusChipStyle(status: string): StatusChipStyle {
   }
   if (key.includes("block") || key.includes("รอ"))
     return { bg: "#fce7f3", color: "#be185d" };
+  if (isEmptyStatus(status)) {
+    return { bg: "#f3f4f6", color: "#6b7280", border: "1px dashed #d1d5db" };
+  }
   return { bg: "#f3f4f6", color: "#374151" };
 }
 
@@ -292,6 +310,37 @@ export function toggleStatusHidden(status: string, hidden: string[]): void {
   } else {
     hidden.push(status);
   }
+}
+
+export function collectAllStatuses(
+  rows: string[][],
+  settings: Settings,
+  mapping: ColumnMapping,
+): string[] {
+  const dataRows = settings.firstRowIsHeader ? rows.slice(1) : rows;
+  const seen = new Set<string>();
+  const list: string[] = [];
+
+  for (const row of dataRows) {
+    let status: string;
+    if (mapping.statusColumn !== null) {
+      const raw = cell(row, mapping.statusColumn);
+      if (!raw || looksLikeDate(raw)) {
+        status = EMPTY_STATUS_LABEL;
+      } else {
+        status = raw;
+      }
+    } else {
+      status = pickStatus(row, mapping);
+    }
+    if (!looksLikeStatus(status) && !isEmptyStatus(status)) continue;
+    const key = norm(status);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    list.push(status);
+  }
+
+  return list.sort((a, b) => statusSortKey(a) - statusSortKey(b));
 }
 
 export function collectStatuses(
@@ -330,10 +379,7 @@ export function collectStatuses(
 }
 
 function isUnspecifiedStatus(status: string): boolean {
-  const s = status.trim();
-  if (!s || s === "ไม่ระบุ") return true;
-  const key = norm(s);
-  return key === "unspecified" || key === "unknown";
+  return isEmptyStatus(status);
 }
 
 function statusSortKey(status: string): number {
@@ -437,17 +483,35 @@ function dedupeTags(tags: string[], action: string): string[] {
   });
 }
 
+function looksLikeStatus(value: string): boolean {
+  const v = value.trim();
+  if (!v || looksLikeDate(v)) return false;
+  // "1 - กำลังทำ", "2.5 - รอ Cross Check", "6 - Done"
+  if (/^\d+(\.\d+)?\s*-\s*.+/.test(v)) return true;
+  if (v.length > 48) return false;
+  // Task titles / descriptions — not status labels
+  if (/[>_/]{1,}/.test(v) && v.length > 20) return false;
+  const key = norm(v);
+  if (isEmptyStatus(v)) return true;
+  if (/^(done|complete|completed|todo|backlog|in progress)$/i.test(key)) {
+    return true;
+  }
+  return isStatusLike(v);
+}
+
 function pickStatus(row: string[], mapping: ColumnMapping): string {
-  const fromCol = cell(row, mapping.statusColumn);
-  if (fromCol && !looksLikeDate(fromCol)) return fromCol;
+  if (mapping.statusColumn !== null) {
+    const fromCol = cell(row, mapping.statusColumn);
+    if (fromCol && !looksLikeDate(fromCol)) return fromCol;
+    return EMPTY_STATUS_LABEL;
+  }
 
   for (const value of row) {
     const v = value.trim();
     if (!v || looksLikeDate(v) || isNoise(v)) continue;
-    if (/^\d+\s*-/.test(v)) return v;
-    if (/done|complete|รอ|demo|progress|doing|block/i.test(v)) return v;
+    if (looksLikeStatus(v)) return v;
   }
-  return "ไม่ระบุ";
+  return EMPTY_STATUS_LABEL;
 }
 
 /** Match by assignee column — supports multiple names in one cell. */
@@ -675,14 +739,17 @@ export function buildKanban(
 
   const groups = new Map<string, TaskCard[]>();
   for (const card of cards) {
-    const key = card.status || "ไม่ระบุ";
+    const key = card.status || EMPTY_STATUS_LABEL;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(card);
   }
 
-  const columns = [...groups.entries()]
-    .sort(([a], [b]) => statusSortKey(a) - statusSortKey(b))
-    .map(([label, groupCards]) => {
+  const allStatuses = collectAllStatuses(rows, settings, mapping);
+
+  const columns = allStatuses
+    .filter((label) => !isStatusHidden(label, settings.hiddenStatuses))
+    .map((label) => {
+      const groupCards = groups.get(label) ?? [];
       const ordered = [...groupCards].sort((a, b) => b.sheetRow - a.sheetRow);
       const overflow =
         ordered.length > MAX_CARDS_PER_COLUMN
@@ -697,8 +764,7 @@ export function buildKanban(
         cards: overflow > 0 ? ordered.slice(0, MAX_CARDS_PER_COLUMN) : ordered,
         overflowCount: overflow > 0 ? overflow : undefined,
       };
-    })
-    .filter((col) => col.cards.length > 0);
+    });
 
   return { columns, matchCount: cards.length };
 }

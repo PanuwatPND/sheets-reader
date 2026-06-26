@@ -40,6 +40,8 @@ export interface Settings {
   /** 0 = disabled. Auto-refresh interval in minutes. */
   autoRefreshMinutes: 0 | 5 | 10 | 15 | 30;
   trayDisplay: "numbers" | "icon";
+  /** Path to Google service account JSON — enables in-app status updates. */
+  serviceAccountPath: string;
 }
 
 export interface SheetData {
@@ -66,6 +68,7 @@ export const defaultSettings = (): Settings => ({
   showRawTable: false,
   autoRefreshMinutes: 0,
   trayDisplay: "numbers",
+  serviceAccountPath: "",
 });
 
 export function extractSpreadsheetId(input: string): string {

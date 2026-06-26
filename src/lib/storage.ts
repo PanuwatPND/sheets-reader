@@ -20,6 +20,7 @@ export function loadSettings(): Settings {
         parsed.includeSharedAssignees ?? base.includeSharedAssignees,
       autoRefreshMinutes: parsed.autoRefreshMinutes ?? base.autoRefreshMinutes,
       trayDisplay: parsed.trayDisplay ?? base.trayDisplay,
+      serviceAccountPath: parsed.serviceAccountPath ?? base.serviceAccountPath,
     };
   } catch {
     return defaultSettings();

@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { avatarColor, initials, type KanbanColumn } from "../lib/kanban";
+import { avatarColor, initials, type KanbanColumn, type TaskCard } from "../lib/kanban";
 import { sheetRowUrl } from "../lib/sheetsLogic";
 
 const props = defineProps<{
@@ -8,12 +9,59 @@ const props = defineProps<{
   compact?: boolean;
   spreadsheetId?: string;
   sheetName?: string;
+  writable?: boolean;
 }>();
+
+const emit = defineEmits<{
+  statusChange: [payload: { sheetRow: number; fromStatus: string; toStatus: string }];
+}>();
+
+const draggingCard = ref<TaskCard | null>(null);
+const dragOverColumnId = ref<string | null>(null);
 
 function openRow(sheetRow: number) {
   if (!props.spreadsheetId || !props.sheetName) return;
   const url = sheetRowUrl(props.spreadsheetId, props.sheetName, sheetRow);
   invoke("open_url", { url });
+}
+
+function onDragStart(event: DragEvent, card: TaskCard) {
+  if (!props.writable) return;
+  draggingCard.value = card;
+  event.dataTransfer?.setData("text/plain", String(card.sheetRow));
+  event.dataTransfer!.effectAllowed = "move";
+}
+
+function onDragEnd() {
+  draggingCard.value = null;
+  dragOverColumnId.value = null;
+}
+
+function onDragOver(event: DragEvent, column: KanbanColumn) {
+  if (!props.writable || !draggingCard.value) return;
+  if (draggingCard.value.status === column.label) return;
+  event.preventDefault();
+  dragOverColumnId.value = column.id;
+}
+
+function onDragLeave(column: KanbanColumn) {
+  if (dragOverColumnId.value === column.id) {
+    dragOverColumnId.value = null;
+  }
+}
+
+function onDrop(event: DragEvent, column: KanbanColumn) {
+  event.preventDefault();
+  const card = draggingCard.value;
+  draggingCard.value = null;
+  dragOverColumnId.value = null;
+  if (!card || !props.writable) return;
+  if (card.status === column.label) return;
+  emit("statusChange", {
+    sheetRow: card.sheetRow,
+    fromStatus: card.status,
+    toStatus: column.label,
+  });
 }
 
 function actionTone(action: string): string {
@@ -48,6 +96,10 @@ function categoryTone(cat: string): string {
         v-for="column in columns"
         :key="column.id"
         class="kanban-column"
+        :class="{ 'kanban-column--drag-over': dragOverColumnId === column.id }"
+        @dragover="onDragOver($event, column)"
+        @dragleave="onDragLeave(column)"
+        @drop="onDrop($event, column)"
       >
         <div class="column-head">
           <span
@@ -69,7 +121,14 @@ function categoryTone(cat: string): string {
             v-for="card in column.cards"
             :key="card.id"
             class="task-card"
-            :class="{ 'task-card--linkable': spreadsheetId }"
+            :class="{
+              'task-card--linkable': spreadsheetId,
+              'task-card--draggable': writable,
+              'task-card--dragging': draggingCard?.id === card.id,
+            }"
+            :draggable="writable"
+            @dragstart="onDragStart($event, card)"
+            @dragend="onDragEnd"
           >
             <div
               v-if="
