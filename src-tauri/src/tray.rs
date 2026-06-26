@@ -1,8 +1,8 @@
 use tauri::{
     image::Image,
-    menu::{Menu, MenuItem},
+    menu::{IconMenuItem, Menu, NativeIcon, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, Runtime,
+    AppHandle, Emitter, Manager, Runtime,
 };
 
 const TRAY_ID: &str = "main-tray";
@@ -10,23 +10,23 @@ const TRAY_ID: &str = "main-tray";
 const TRAY_ICON: Image<'_> = tauri::include_image!("icons/tray-icon.png");
 
 pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
-    let show = MenuItem::with_id(app, "show", "เปิด Sheets Reader", true, None::<&str>)?;
-    let hide = MenuItem::with_id(app, "hide", "ซ่อนหน้าต่าง", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "ออกจากแอป", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show, &hide, &quit])?;
+    let show = IconMenuItem::with_id_and_native_icon(app, "show", "Open", true, Some(NativeIcon::EnterFullScreen), None::<&str>)?;
+    let refresh = IconMenuItem::with_id_and_native_icon(app, "refresh", "Refresh", true, Some(NativeIcon::Refresh), None::<&str>)?;
+    let sep = PredefinedMenuItem::separator(app)?;
+    let hide = PredefinedMenuItem::hide(app, Some("Hide"))?;
+    let quit = PredefinedMenuItem::quit(app, Some("Quit"))?;
+    let menu = Menu::with_items(app, &[&show, &refresh, &sep, &hide, &quit])?;
 
     let _tray = TrayIconBuilder::with_id(TRAY_ID)
-        .icon(TRAY_ICON)  
+        .icon(TRAY_ICON)
         .icon_as_template(true)
         .menu(&menu)
         .tooltip("Sheets Reader")
         .on_menu_event(|app, event| {
-            let id = event.id().as_ref();
-            match id {
+            match event.id().as_ref() {
                 "show" => show_main_window(app),
-                "hide" => hide_main_window(app),
-                "quit" => {
-                    app.exit(0);
+                "refresh" => {
+                    let _ = app.emit("tray-refresh", ());
                 }
                 _ => {}
             }

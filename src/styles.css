@@ -1413,30 +1413,91 @@ textarea {
   color: #475569;
 }
 
-.settings-input,
-.settings-select {
+.settings-input {
   width: 100%;
-  padding: 9px 11px;
-  border-radius: 9px;
+  padding: 8px 12px;
+  border-radius: 8px;
   border: 1px solid #e2e8f0;
-  background: #fff;
+  background: #f8fafc;
   color: var(--text);
   font-size: 13px;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 
-.settings-input:hover,
+.settings-input:hover {
+  border-color: #cbd5e1;
+  background: #fff;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.settings-select {
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+  -webkit-appearance: none;
+  appearance: none;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+
 .settings-select:hover {
   border-color: #cbd5e1;
+  background-color: #fff;
 }
 
-.settings-input:focus,
 .settings-select:focus {
   outline: none;
   border-color: var(--accent);
+  background-color: #fff;
   box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.seg-ctrl {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  background: #f1f4f8;
+  border-radius: 10px;
+}
+
+.seg-ctrl-btn {
+  flex: 1;
+  padding: 7px 0;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 400;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.seg-ctrl-btn:hover:not(.active) {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.seg-ctrl-btn.active {
+  background: #fff;
+  color: var(--text);
+  font-weight: 500;
+  box-shadow:
+    0 1px 4px rgba(15, 23, 42, 0.1),
+    0 0 0 0.5px rgba(15, 23, 42, 0.06);
 }
 
 .settings-hint {
@@ -1608,4 +1669,41 @@ textarea {
   font-size: 11px;
   color: var(--muted);
   line-height: 1.4;
+}
+
+/* Card row link — opens row in Google Sheets */
+.task-card {
+  position: relative;
+}
+
+.card-row-link {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: none;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  background: #fff;
+  font-size: 11px;
+  color: #6b7280;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.card-row-link:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.card-row-num {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.task-card--linkable:hover .card-row-link {
+  display: flex;
 }

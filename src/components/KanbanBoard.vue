@@ -1,10 +1,20 @@
 <script setup lang="ts">
-import { avatarColor, cardDisplayTitle, initials, statusChipStyle, type KanbanColumn } from "../lib/kanban";
+import { invoke } from "@tauri-apps/api/core";
+import { avatarColor, initials, type KanbanColumn } from "../lib/kanban";
+import { sheetRowUrl } from "../lib/sheetsLogic";
 
-defineProps<{
+const props = defineProps<{
   columns: KanbanColumn[];
   compact?: boolean;
+  spreadsheetId?: string;
+  sheetName?: string;
 }>();
+
+function openRow(sheetRow: number) {
+  if (!props.spreadsheetId || !props.sheetName) return;
+  const url = sheetRowUrl(props.spreadsheetId, props.sheetName, sheetRow);
+  invoke("open_url", { url });
+}
 
 function actionTone(action: string): string {
   const v = action.trim().toLowerCase();
@@ -43,8 +53,8 @@ function categoryTone(cat: string): string {
           <span
             class="column-label"
             :style="{
-              background: statusChipStyle(column.label).bg,
-              color: statusChipStyle(column.label).color,
+              background: column.chipStyle.bg,
+              color: column.chipStyle.color,
             }"
           >
             {{ column.label }}
@@ -59,6 +69,7 @@ function categoryTone(cat: string): string {
             v-for="card in column.cards"
             :key="card.id"
             class="task-card"
+            :class="{ 'task-card--linkable': spreadsheetId }"
           >
             <div
               v-if="
@@ -99,11 +110,11 @@ function categoryTone(cat: string): string {
             </div>
 
             <h3
-              v-if="cardDisplayTitle(card)"
+              v-if="card.displayTitle"
               class="card-headline"
-              :title="cardDisplayTitle(card)"
+              :title="card.displayTitle"
             >
-              {{ cardDisplayTitle(card) }}
+              {{ card.displayTitle }}
             </h3>
 
             <ul v-if="card.checklist.length" class="checklist">
@@ -149,6 +160,17 @@ function categoryTone(cat: string): string {
                 {{ tag }}
               </span>
             </div>
+
+            <button
+              v-if="spreadsheetId"
+              type="button"
+              class="card-row-link"
+              :title="`เปิดใน Sheets (แถว ${card.sheetRow})`"
+              @click.stop="openRow(card.sheetRow)"
+            >
+              <span class="card-row-num">{{ card.sheetRow }}</span>
+              ↗
+            </button>
           </article>
 
           <p v-if="column.overflowCount" class="column-overflow">

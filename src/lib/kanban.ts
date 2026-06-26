@@ -21,6 +21,8 @@ export interface TaskCard {
   title: string;
   category: string | null;
   headline: string;
+  /** Pre-computed display title — use instead of calling cardDisplayTitle() in templates. */
+  displayTitle: string;
   checklist: ChecklistItem[];
   status: string;
   action: string;
@@ -31,12 +33,24 @@ export interface TaskCard {
   isMatch: boolean;
 }
 
+export interface ChipStyle {
+  bg: string;
+  color: string;
+}
+
 export interface KanbanColumn {
   id: string;
   label: string;
   tone: "pink" | "orange" | "green" | "blue" | "gray";
+  /** Pre-computed chip style — use instead of calling statusChipStyle() in templates. */
+  chipStyle: ChipStyle;
   cards: TaskCard[];
   overflowCount?: number;
+}
+
+export interface KanbanResult {
+  columns: KanbanColumn[];
+  matchCount: number;
 }
 
 const MAX_CARDS_PER_COLUMN = 40;
@@ -526,23 +540,28 @@ export function matchesAction(
 
   const actionValue =
     mapping.actionColumn !== null ? cell(row, mapping.actionColumn) : "";
-  const rowRange = getRowDateRange(row, mapping, now);
+  const normAction = norm(actionValue);
 
   if (actionFilter === "This week") {
-    const week = workWeekRange(now);
-    if (rowRange) return rangesOverlap(rowRange, week);
-    return norm(actionValue) === "this week";
+    // Explicit action text wins over date range (deadline may fall outside work week)
+    if (normAction === "this week") return true;
+    const rowRange = getRowDateRange(row, mapping, now);
+    if (rowRange) return rangesOverlap(rowRange, workWeekRange(now));
+    return false;
   }
 
   if (actionFilter === "Next week") {
-    const week = nextWorkWeekRange(now);
-    if (rowRange) return rangesOverlap(rowRange, week);
-    return norm(actionValue) === "next week";
+    if (normAction === "next week") return true;
+    const rowRange = getRowDateRange(row, mapping, now);
+    if (rowRange) return rangesOverlap(rowRange, nextWorkWeekRange(now));
+    return false;
   }
 
   if (actionFilter === "Later") {
+    if (normAction === "later") return true;
+    const rowRange = getRowDateRange(row, mapping, now);
     if (rowRange) return isRangeAfterWeek(rowRange, nextWorkWeekRange(now));
-    return norm(actionValue) === "later";
+    return false;
   }
 
   if (mapping.actionColumn === null) return true;
@@ -576,20 +595,11 @@ function rowVisible(
   return true;
 }
 
-export function countMatches(
-  rows: string[][],
-  settings: Settings,
-  mapping: ColumnMapping,
-): number {
-  const dataRows = settings.firstRowIsHeader ? rows.slice(1) : rows;
-  return dataRows.filter((r) => rowVisible(r, settings, mapping)).length;
-}
-
 export function buildKanban(
   rows: string[][],
   settings: Settings,
   mapping: ColumnMapping,
-): KanbanColumn[] {
+): KanbanResult {
   const dataRows = settings.firstRowIsHeader ? rows.slice(1) : rows;
 
   const usedCols = new Set([
@@ -642,12 +652,13 @@ export function buildKanban(
         settings.nameColumn,
         settings.includeSharedAssignees,
       );
-      return {
+      const card: TaskCard = {
         id: index,
         sheetRow: index + (settings.firstRowIsHeader ? 2 : 1),
         title,
         category,
         headline,
+        displayTitle: "",
         checklist,
         status,
         action,
@@ -657,6 +668,8 @@ export function buildKanban(
         tags,
         isMatch,
       };
+      card.displayTitle = cardDisplayTitle(card);
+      return card;
     })
     .filter((c): c is TaskCard => c !== null);
 
@@ -667,7 +680,7 @@ export function buildKanban(
     groups.get(key)!.push(card);
   }
 
-  return [...groups.entries()]
+  const columns = [...groups.entries()]
     .sort(([a], [b]) => statusSortKey(a) - statusSortKey(b))
     .map(([label, groupCards]) => {
       const ordered = [...groupCards].sort((a, b) => b.sheetRow - a.sheetRow);
@@ -675,16 +688,19 @@ export function buildKanban(
         ordered.length > MAX_CARDS_PER_COLUMN
           ? ordered.length - MAX_CARDS_PER_COLUMN
           : 0;
+      const { bg, color } = statusChipStyle(label);
       return {
         id: norm(label).replace(/\s+/g, "-") || "unknown",
         label,
         tone: statusTone(label),
-        cards:
-          overflow > 0 ? ordered.slice(0, MAX_CARDS_PER_COLUMN) : ordered,
+        chipStyle: { bg, color },
+        cards: overflow > 0 ? ordered.slice(0, MAX_CARDS_PER_COLUMN) : ordered,
         overflowCount: overflow > 0 ? overflow : undefined,
       };
     })
     .filter((col) => col.cards.length > 0);
+
+  return { columns, matchCount: cards.length };
 }
 
 export function buildKanbanCopyText(columns: KanbanColumn[]): string {

@@ -1,23 +1,38 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { Settings } from "../lib/sheetsLogic";
+import SettingsInput from "./ui/SettingsInput.vue";
+import SettingsSelect from "./ui/SettingsSelect.vue";
 
-defineProps<{
+const props = defineProps<{
   settings: Settings;
   rows: string[][];
   cols: number;
   loading: boolean;
   error: string | null;
-  columnLabel: (
-    col: number,
-    rows: string[][],
-    firstRowIsHeader: boolean,
-  ) => string;
+  columnLabel: (col: number, rows: string[][], firstRowIsHeader: boolean) => string;
 }>();
 
 const emit = defineEmits<{
   close: [];
   fetch: [];
 }>();
+
+const nameColumnOptions = computed(() => [
+  { value: null as number | null, label: "Assignee / Doing (แนะนำ)" },
+  ...Array.from({ length: props.cols }, (_, i) => ({
+    value: i as number | null,
+    label: props.columnLabel(i, props.rows, props.settings.firstRowIsHeader),
+  })),
+]);
+
+const autoRefreshOptions = [
+  { value: 0, label: "ปิด" },
+  { value: 5, label: "ทุก 5 นาที" },
+  { value: 10, label: "ทุก 10 นาที" },
+  { value: 15, label: "ทุก 15 นาที" },
+  { value: 30, label: "ทุก 30 นาที" },
+];
 </script>
 
 <template>
@@ -52,35 +67,29 @@ const emit = defineEmits<{
 
             <div class="settings-field">
               <label for="sheet-url">Spreadsheet URL หรือ ID</label>
-              <input
+              <SettingsInput
                 id="sheet-url"
                 v-model="settings.spreadsheetInput"
-                type="text"
-                class="settings-input"
                 placeholder="https://docs.google.com/spreadsheets/d/..."
-                @keydown.enter.meta.prevent="emit('fetch')"
+                @enter="emit('fetch')"
               />
             </div>
 
             <div class="settings-field-row">
               <div class="settings-field">
                 <label for="sheet-tabs">แท็บที่อ่าน</label>
-                <input
+                <SettingsInput
                   id="sheet-tabs"
                   v-model="settings.sheetTabs"
-                  type="text"
-                  class="settings-input"
                   placeholder="FE-tasks, Bugs"
                 />
                 <span class="settings-hint">คั่นด้วย comma</span>
               </div>
               <div class="settings-field settings-field--narrow">
                 <label for="cell-range">ช่วงเซลล์</label>
-                <input
+                <SettingsInput
                   id="cell-range"
                   v-model="settings.cellRange"
-                  type="text"
-                  class="settings-input"
                   placeholder="A1:T2000"
                 />
               </div>
@@ -103,16 +112,12 @@ const emit = defineEmits<{
           <div class="settings-card">
             <div class="settings-field">
               <label for="name-column">ค้นจากคอลัมน์</label>
-              <select
+              <SettingsSelect
                 id="name-column"
-                v-model="settings.nameColumn"
-                class="settings-input settings-select"
-              >
-                <option :value="null">Assignee / Doing (แนะนำ)</option>
-                <option v-for="c in cols" :key="c" :value="c - 1">
-                  {{ columnLabel(c - 1, rows, settings.firstRowIsHeader) }}
-                </option>
-              </select>
+                :model-value="settings.nameColumn"
+                :options="nameColumnOptions"
+                @update:model-value="(v) => (settings.nameColumn = v as Settings['nameColumn'])"
+              />
               <span class="settings-hint">
                 กรองจาก Assignee — ไม่เห็นงานของคนอื่น
               </span>
@@ -120,9 +125,7 @@ const emit = defineEmits<{
 
             <label class="settings-switch">
               <span class="settings-switch-text">
-                <span class="settings-switch-label"
-                  >รวมงานที่ assign หลายคน</span
-                >
+                <span class="settings-switch-label">รวมงานที่ assign หลายคน</span>
               </span>
               <input
                 v-model="settings.includeSharedAssignees"
@@ -137,7 +140,39 @@ const emit = defineEmits<{
         <section class="settings-section">
           <h3 class="settings-section-title">เพิ่มเติม</h3>
           <div class="settings-card settings-card--compact">
-            <label class="settings-switch">
+            <div class="settings-field">
+              <label>Menu bar</label>
+              <div class="seg-ctrl" role="group">
+                <button
+                  type="button"
+                  class="seg-ctrl-btn"
+                  :class="{ active: settings.trayDisplay === 'numbers' }"
+                  @click="settings.trayDisplay = 'numbers'"
+                >
+                  Numbers
+                </button>
+                <button
+                  type="button"
+                  class="seg-ctrl-btn"
+                  :class="{ active: settings.trayDisplay === 'icon' }"
+                  @click="settings.trayDisplay = 'icon'"
+                >
+                  Icon
+                </button>
+              </div>
+            </div>
+
+            <div class="settings-field" style="margin-top: 14px;">
+              <label for="auto-refresh">รีเฟรชอัตโนมัติ</label>
+              <SettingsSelect
+                id="auto-refresh"
+                :model-value="settings.autoRefreshMinutes"
+                :options="autoRefreshOptions"
+                @update:model-value="(v) => (settings.autoRefreshMinutes = v as Settings['autoRefreshMinutes'])"
+              />
+            </div>
+
+            <label class="settings-switch" style="margin-top: 4px;">
               <span class="settings-switch-text">ดูตารางดิบ</span>
               <input
                 v-model="settings.showRawTable"
@@ -158,11 +193,7 @@ const emit = defineEmits<{
           :disabled="loading || !settings.spreadsheetInput.trim()"
           @click="emit('fetch')"
         >
-          <span
-            v-if="loading"
-            class="drawer-fetch-spinner"
-            aria-hidden="true"
-          />
+          <span v-if="loading" class="drawer-fetch-spinner" aria-hidden="true" />
           {{ loading ? "กำลังโหลด…" : "อ่านข้อมูล" }}
         </button>
         <p class="drawer-foot-note">ปิดหน้าต่างแล้วแอปยังอยู่ที่ menubar</p>

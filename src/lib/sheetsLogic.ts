@@ -37,6 +37,9 @@ export interface Settings {
   /** Status labels hidden from the Kanban board */
   hiddenStatuses: string[];
   showRawTable: boolean;
+  /** 0 = disabled. Auto-refresh interval in minutes. */
+  autoRefreshMinutes: 0 | 5 | 10 | 15 | 30;
+  trayDisplay: "numbers" | "icon";
 }
 
 export interface SheetData {
@@ -61,7 +64,26 @@ export const defaultSettings = (): Settings => ({
   actionFilter: "This week",
   hiddenStatuses: [],
   showRawTable: false,
+  autoRefreshMinutes: 0,
+  trayDisplay: "numbers",
 });
+
+export function extractSpreadsheetId(input: string): string {
+  const trimmed = input.trim();
+  const marker = "/spreadsheets/d/";
+  const idx = trimmed.indexOf(marker);
+  if (idx !== -1) {
+    const after = trimmed.slice(idx + marker.length);
+    const slash = after.indexOf("/");
+    return slash !== -1 ? after.slice(0, slash) : after;
+  }
+  return trimmed;
+}
+
+export function sheetRowUrl(spreadsheetId: string, sheetName: string, row: number): string {
+  const encoded = encodeURIComponent(`'${sheetName}'!A${row}`);
+  return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit#range=${encoded}`;
+}
 
 export function buildFullTableText(rows: string[][]): string {
   return rows

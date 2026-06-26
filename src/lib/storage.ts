@@ -18,6 +18,8 @@ export function loadSettings(): Settings {
       hiddenStatuses: parsed.hiddenStatuses ?? base.hiddenStatuses,
       includeSharedAssignees:
         parsed.includeSharedAssignees ?? base.includeSharedAssignees,
+      autoRefreshMinutes: parsed.autoRefreshMinutes ?? base.autoRefreshMinutes,
+      trayDisplay: parsed.trayDisplay ?? base.trayDisplay,
     };
   } catch {
     return defaultSettings();

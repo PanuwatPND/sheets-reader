@@ -1,0 +1,15 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="230" fill="#0d0d0d"/>
+
+  <!-- Bar 1 track + fill -->
+  <rect x="120" y="200" width="784" height="130" rx="32" fill="#2a2a2a"/>
+  <rect x="120" y="200" width="274" height="130" rx="32" fill="#e0e0e0"/>
+
+  <!-- Bar 2 track + fill -->
+  <rect x="120" y="447" width="784" height="130" rx="32" fill="#2a2a2a"/>
+  <rect x="120" y="447" width="510" height="130" rx="32" fill="#e0e0e0"/>
+
+  <!-- Bar 3 track + fill -->
+  <rect x="120" y="694" width="784" height="130" rx="32" fill="#2a2a2a"/>
+  <rect x="120" y="694" width="392" height="130" rx="32" fill="#e0e0e0"/>
+</svg>
